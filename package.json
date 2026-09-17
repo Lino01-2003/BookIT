@@ -1,0 +1,14 @@
+{
+    "name": "bookit",
+    "version": "1.0.0",
+    "private": true,
+    "description": "A small local booking app for shared office resources.",
+    "type": "module",
+    "scripts": {
+        "start": "node server.js",
+        "test": "node --test"
+    },
+    "engines": {
+        "node": ">=20"
+    }
+}

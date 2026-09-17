@@ -1,0 +1,11 @@
+node_modules/
+
+# Keep local booking data out of version control.
+data/bookings.json
+
+# Test and temporary storage files.
+tests/tmp/
+*.tmp
+*.bak
+.env
+.env.*

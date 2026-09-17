@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Create Booking | BookIt</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+
+<body>
+    <main class="page-shell">
+        <nav class="site-nav">
+            <a class="brand" href="/">BookIt</a>
+            <div class="nav-links">
+                <a href="/">Dashboard</a>
+                <a href="/resources.html">Resources</a>
+                <a class="nav-create active" href="/booking.html">+ Create Booking</a>
+            </div>
+        </nav>
+        <header class="page-header compact-header">
+            <div>
+                <p class="eyebrow">Reserve something</p>
+                <h1>New booking</h1>
+                <p class="subtitle">Fill in the details and BookIt will check the schedule for clashes.</p>
+            </div>
+        </header>
+        <section class="single-column">
+            <form id="booking-form" class="panel booking-form">
+                <div class="panel-heading">
+                    <h2>Booking details</h2>
+                    <span class="step-mark">01</span>
+                </div>
+                <label>Resource<select id="resource" name="resource" required></select></label>
+                <div class="field-row">
+                    <label>Date<input id="date" name="date" type="date" required></label>
+                    <label>Start<input id="start-time" name="startTime" type="time" required></label>
+                    <label>End<input id="end-time" name="endTime" type="time" required></label>
+                </div>
+                <label>Person’s name<input name="person" type="text" maxlength="80" required></label>
+                <label>Purpose<textarea name="purpose" rows="3" maxlength="200" required></textarea></label>
+                <button type="submit">Create booking</button>
+                <p id="form-message" class="message" role="alert"></p>
+            </form>
+        </section>
+    </main>
+    <script src="/booking.js" type="module"></script>
+</body>
+
+</html>
