@@ -1,73 +1,51 @@
-# BookIt — Code Review
+# BookIt - Code Review
 
-## 1. Conflict checks rely on local memory
+## Part 1: Findings and fixes
 
-- Lines: 2, 9–11, 19
-- Severity: High
-- Problem: After a restart or across multiple server instances, the local array can miss existing bookings and allow double-booking.
-- Fix: Use the database as the source of truth and enforce conflict checking and insertion atomically.
+### 1. Concurrent mutations could lose bookings or double-book a resource
 
-## 2. Adjacent bookings are treated as overlapping
+- **Severity:** High for simultaneous requests.
+- **Finding:** Create and cancellation previously performed separate asynchronous read and write operations, so requests could work from stale arrays.
+- **Fix:** A single-process mutation queue now serializes the complete read, validation, conflict check, modification, and save sequence. The queue releases after failures so later requests continue.
 
-- Lines: 4–5
-- Severity: Medium (depends on the booking policy)
-- Problem: The comparison rejects 10:00–11:00 when an existing booking ends at 10:00, even if back-to-back bookings should be allowed.
-- Fix: If back-to-back bookings are allowed, use `a.start < b.end && a.end > b.start`.
+### 2. Direct JSON writes could expose incomplete data
 
-## 3. Input and identifier types are not validated consistently
+- **Severity:** High for a reader during a write.
+- **Finding:** Writing directly to `bookings.json` could leave partial JSON if interrupted.
+- **Fix:** The server writes a uniquely named temporary file and replaces the data file only after the temporary write succeeds.
 
-- Lines: 8–10, 25, 32
-- Severity: High
-- Problem: Missing fields, invalid or reversed dates, and inconsistent identifier types can cause incorrect comparisons, failed lookups, or runtime errors.
-- Fix: Validate required fields, normalize dates and identifiers, enforce `start < end`, and compare canonical identifiers using `===`.
+### 3. Input validation assumed a well-shaped object
 
-## 4. Cancellation is incomplete and handles missing bookings unsafely
+- **Severity:** High at the API boundary.
+- **Finding:** Null, arrays, non-string fields, and malformed JSON were not handled with clear validation responses.
+- **Fix:** The API rejects malformed bodies and non-string booking fields with HTTP 400 and user-facing messages that do not expose internal details.
 
-- Lines: 9–11, 24–27
-- Severity: High
-- Problem: Cancellation is not persisted, cancelled bookings still block availability, and an unknown booking ID causes a TypeError.
-- Fix: Handle missing bookings explicitly, persist cancellation before reporting success, and exclude cancelled bookings from conflict checks.
+### 4. Error statuses did not describe the failure
 
-## 5. Booking IDs are neither reliably unique nor protected
+- **Severity:** Medium.
+- **Finding:** Errors were previously returned as HTTP 400, including conflicts and unexpected storage failures.
+- **Fix:** Invalid input is 400, clashes are 409, missing bookings are 404, and unexpected storage failures are 500.
 
-- Lines: 15–16
-- Severity: High
-- Problem: Array-length IDs can repeat after restarts or across servers, and a caller-supplied `id` can overwrite the generated value through `...input`.
-- Fix: Copy only allowed input fields and assign a server-controlled ID backed by a database unique constraint.
+### 5. Browser date defaults used UTC instead of the office calendar
 
-## 6. Mutable references expose internal booking data
+- **Severity:** Medium near midnight.
+- **Finding:** `toISOString()` could choose a different calendar date from the office date.
+- **Fix:** Dashboard and booking defaults now use Asia/Colombo.
 
-- Lines: 16, 21, 27, 31–33
-- Severity: Medium
-- Problem: An in-process caller can modify shared booking objects or Date values without validation, conflict checks, or database updates.
-- Fix: Copy and normalize input values and return detached response objects.
+## Part 2: Required answers
 
-## 7. Creation reports success before persistence completes
+### What would I fix first?
 
-- Lines: 19–21
-- Severity: High
-- Problem: If the database save is asynchronous, creation reports success before it completes; a failed save leaves an unsaved booking in memory.
-- Fix: Await persistence before updating memory and returning success, while keeping conflict checking and insertion atomic.
+I would fix the unsynchronized read-check-write sequence first because simultaneous users could receive successful confirmations for conflicting bookings or cause one valid booking to disappear. The mutation queue and isolated concurrency tests now address this for one running server process.
 
-## 8. Daily filtering can return incomplete or incorrectly dated results
+### One thing I would change even though it is not a bug
 
-- Lines: 30–33
-- Severity: Medium (depends on the daily view and timezone requirements)
-- Problem: Filtering by the UTC start date omits overnight bookings occupying the requested day and can place bookings on the wrong business calendar date.
-- Fix: Calculate day boundaries in the agreed timezone and include bookings where `start < dayEnd && end > dayStart`.
+I would eventually replace JSON storage with a transactional database and use stable machine-readable domain error codes such as `BOOKING_CONFLICT`. That would support multiple server processes and make client error handling less dependent on message text.
 
-## What I would fix first in thirty minutes
+### One thing I would deliberately leave alone
 
-I would fix issue 7 because a customer can receive confirmation for a booking that was never saved.
+I would keep the overlap rule as a small pure helper using half-open intervals. It is easy to read, easy to test, and matches the agreed back-to-back booking policy.
 
-I would await persistence, handle failures, and update memory only after success. Introducing an awaited save must not allow concurrent requests to bypass conflict checks; database-level protection is required across multiple servers.
+## Remaining limitation
 
-I would verify that a delayed save delays the success response and that a failed save leaves no booking in memory.
-
-## One thing I would change even though it is not a bug
-
-I would replace `Error('Conflict')` on line 12 with a domain error carrying a stable code such as `BOOKING_CONFLICT`. This makes client handling clearer without relying on message text.
-
-## One thing I would deliberately leave alone
-
-I would keep `overlaps()` as a small, pure helper function. It makes the overlap rule easy to understand and test, while allowing its comparison operators to follow the agreed booking policy.
+The queue is intentionally scoped to one running Node.js process. Multiple processes or deployed instances would require database transactions or distributed coordination.
