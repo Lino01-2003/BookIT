@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createRequestHandler } from '../server.js';
+import { createRequestHandler, saveBookings } from '../server.js';
 
 const baseBooking = {
     resource: 'Meeting Room 1',
@@ -139,4 +139,30 @@ test('missing cancellation returns 404 and storage errors return 500 without tou
         assert.equal(storageFailure.body.error, 'Booking storage is temporarily unavailable.');
         assert.doesNotMatch(storageFailure.body.error, /bookit|tmp|F:\\|storagePath/i);
     });
+});
+
+test('failed replacement preserves existing data and a later save succeeds', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'bookit-save-test-'));
+    const storagePath = join(directory, 'bookings.json');
+    const existingBookings = [{ id: 'existing', status: 'confirmed' }];
+    const replacementBookings = [{ id: 'replacement', status: 'confirmed' }];
+
+    try {
+        await writeFile(storagePath, `${JSON.stringify(existingBookings)}\n`);
+        await assert.rejects(
+            () => saveBookings(replacementBookings, storagePath, async () => {
+                const error = new Error('simulated replacement failure');
+                error.code = 'EACCES';
+                throw error;
+            }),
+            /Unable to save booking data/
+        );
+        assert.deepEqual(JSON.parse(await readFile(storagePath, 'utf8')), existingBookings);
+        assert.deepEqual((await readdir(directory)).filter((name) => name.endsWith('.tmp')), []);
+
+        await saveBookings(replacementBookings, storagePath);
+        assert.deepEqual(JSON.parse(await readFile(storagePath, 'utf8')), replacementBookings);
+    } finally {
+        await rm(directory, { recursive: true, force: true });
+    }
 });

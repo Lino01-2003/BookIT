@@ -29,18 +29,11 @@ async function loadBookings(storagePath = dataPath) {
     }
 }
 
-async function saveBookings(bookings, storagePath = dataPath) {
+export async function saveBookings(bookings, storagePath = dataPath, replaceFile = rename) {
     const temporaryPath = `${storagePath}.${process.pid}.${randomUUID()}.tmp`;
     try {
         await writeFile(temporaryPath, `${JSON.stringify(bookings, null, 2)}\n`, 'utf8');
-        try {
-            await rename(temporaryPath, storagePath);
-        } catch (error) {
-            // Windows cannot replace an existing file with rename, so retry after removing it.
-            if (!['EEXIST', 'EPERM'].includes(error.code)) throw error;
-            await rm(storagePath, { force: true });
-            await rename(temporaryPath, storagePath);
-        }
+        await replaceFile(temporaryPath, storagePath);
     } catch (error) {
         await rm(temporaryPath, { force: true }).catch(() => { });
         throw new StorageError('Unable to save booking data.', error);
