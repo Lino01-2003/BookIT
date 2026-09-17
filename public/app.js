@@ -3,7 +3,7 @@ const bookingsElement = document.querySelector('#bookings');
 const scheduleTitle = document.querySelector('#schedule-title');
 const bookingCount = document.querySelector('#booking-count');
 
-const today = new Date().toISOString().slice(0, 10);
+const today = getOfficeDate();
 viewDate.value = today;
 
 async function request(url, options) {
@@ -49,7 +49,13 @@ viewDate.addEventListener('change', () => {
 });
 
 function formatDate(value) {
-    return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(`${value}T00:00:00`));
+    return new Intl.DateTimeFormat(undefined, { timeZone: 'Asia/Colombo', month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(`${value}T00:00:00+05:30`));
+}
+
+function getOfficeDate() {
+    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Colombo', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+    const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+    return `${values.year}-${values.month}-${values.day}`;
 }
 
 function escapeHtml(value) {

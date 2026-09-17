@@ -2,7 +2,7 @@ const form = document.querySelector('#booking-form');
 const dateInput = document.querySelector('#date');
 const resourceSelect = document.querySelector('#resource');
 const message = document.querySelector('#form-message');
-const today = new Date().toISOString().slice(0, 10);
+const today = getOfficeDate();
 const selectedResource = new URLSearchParams(window.location.search).get('resource');
 
 async function request(url, options) {
@@ -40,6 +40,12 @@ form.addEventListener('submit', async (event) => {
 
 function escapeHtml(value) {
     return String(value).replace(/[&<>\"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', "'": '&#039;' }[character]));
+}
+
+function getOfficeDate() {
+    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Colombo', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+    const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+    return `${values.year}-${values.month}-${values.day}`;
 }
 
 dateInput.value = today;

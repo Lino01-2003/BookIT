@@ -6,32 +6,53 @@ export const resources = [
     'Demo Laptop'
 ];
 
+export class BookingValidationError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = 'BookingValidationError';
+        this.code = 'INVALID_INPUT';
+    }
+}
+
+export class BookingConflictError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = 'BookingConflictError';
+        this.code = 'BOOKING_CONFLICT';
+    }
+}
+
 export function validateBookingInput(input) {
     const requiredFields = ['resource', 'date', 'startTime', 'endTime', 'person', 'purpose'];
-    const missing = requiredFields.find((field) => !String(input[field] ?? '').trim());
 
+    if (!input || typeof input !== 'object' || Array.isArray(input)) {
+        throw new BookingValidationError('Request body must be a JSON object.');
+    }
+
+    const invalidField = requiredFields.find((field) => typeof input[field] !== 'string');
+    if (invalidField) {
+        throw new BookingValidationError(`${invalidField} must be a text value.`);
+    }
+
+    const missing = requiredFields.find((field) => !input[field].trim());
     if (missing) {
-        throw new Error('All fields are required.');
+        throw new BookingValidationError('All fields are required.');
     }
 
     if (!resources.includes(input.resource)) {
-        throw new Error('Invalid resource.');
+        throw new BookingValidationError('Invalid resource.');
     }
 
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) {
-        throw new Error('Enter a valid date.');
-    }
-
-    if (!isValidDate(input.date)) {
-        throw new Error('Enter a valid date.');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date) || !isValidDate(input.date)) {
+        throw new BookingValidationError('Enter a valid date.');
     }
 
     if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(input.startTime) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(input.endTime)) {
-        throw new Error('Enter valid start and end times.');
+        throw new BookingValidationError('Enter valid start and end times.');
     }
 
     if (toMinutes(input.endTime) <= toMinutes(input.startTime)) {
-        throw new Error('End time must be later than start time.');
+        throw new BookingValidationError('End time must be later than start time.');
     }
 }
 
@@ -55,7 +76,7 @@ export function createBooking(input, bookings) {
     const conflict = findConflict(input, bookings);
 
     if (conflict) {
-        throw new Error(`Booking clash: ${conflict.resource} is already booked from ${conflict.startTime} to ${conflict.endTime}.`);
+        throw new BookingConflictError(`Booking clash: ${conflict.resource} is already booked from ${conflict.startTime} to ${conflict.endTime}.`);
     }
 
     return {
