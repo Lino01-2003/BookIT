@@ -101,6 +101,10 @@ export function toMinutes(time) {
     return hours * 60 + minutes;
 }
 
+export function isPastBookingDate(value, now = new Date()) {
+    return value < getOfficeDate(now);
+}
+
 function getOfficeDate(now) {
     const parts = new Intl.DateTimeFormat('en-CA', {
         timeZone: 'Asia/Colombo',

@@ -22,12 +22,13 @@ async function loadBookings() {
 
 function renderBooking(booking) {
     const cancelled = booking.status === 'cancelled';
+    const past = booking.date < getOfficeDate();
     return `<article class="booking">
     <div class="booking-time">${booking.startTime}<br>${booking.endTime}</div>
     <div>
       <div class="booking-resource">${escapeHtml(booking.resource)}</div>
       <div class="booking-meta">${escapeHtml(booking.person)} · ${escapeHtml(booking.purpose)}</div>
-      ${cancelled ? '' : `<button class="cancel" data-cancel="${booking.id}" type="button">Cancel booking</button>`}
+    ${cancelled || past ? '' : `<button class="cancel" data-cancel="${booking.id}" type="button">Cancel booking</button>`}
     </div>
     <span class="status${cancelled ? ' cancelled' : ''}">${booking.status}</span>
   </article>`;

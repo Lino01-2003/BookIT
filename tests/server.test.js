@@ -93,6 +93,23 @@ test('cancellation persists and releases the slot', async () => {
     });
 });
 
+test('past bookings remain visible but cannot be cancelled', async () => {
+    const pastBooking = {
+        ...baseBooking,
+        id: 'past-booking',
+        date: new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10),
+        status: 'confirmed'
+    };
+
+    await withTestServer(async ({ request, readBookings }) => {
+        const response = await responseJson(await request('/api/bookings/past-booking/cancel', { method: 'POST' }));
+
+        assert.equal(response.status, 400);
+        assert.equal(response.body.error, 'Past bookings cannot be cancelled.');
+        assert.deepEqual(await readBookings(), [pastBooking]);
+    }, [pastBooking]);
+});
+
 test('invalid input returns 400 and does not block a later valid operation', async () => {
     await withTestServer(async ({ request, readBookings }) => {
         const invalid = await responseJson(await request('/api/bookings', {

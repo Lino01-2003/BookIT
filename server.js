@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { BookingConflictError, BookingValidationError, createBooking, resources } from './src/booking.js';
+import { BookingConflictError, BookingValidationError, createBooking, isPastBookingDate, resources } from './src/booking.js';
 
 const root = fileURLToPath(new URL('.', import.meta.url));
 const dataPath = join(root, 'data', 'bookings.json');
@@ -102,6 +102,9 @@ async function handleApi(request, response, pathname, storagePath, enqueueMutati
             }
             if (foundBooking.status !== 'confirmed') {
                 throw new BookingValidationError('Only confirmed bookings can be cancelled.');
+            }
+            if (isPastBookingDate(foundBooking.date)) {
+                throw new BookingValidationError('Past bookings cannot be cancelled.');
             }
 
             foundBooking.status = 'cancelled';
