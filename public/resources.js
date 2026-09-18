@@ -1,8 +1,9 @@
+import { escapeHtml, requestJson } from './shared.js';
+
 const resourceList = document.querySelector('#resource-list');
 
 async function loadResources() {
-    const response = await fetch('/api/resources');
-    const resources = await response.json();
+    const resources = await requestJson('/api/resources');
     resourceList.innerHTML = resources.map((resource, index) => `
         <article class="resource-card">
             <div class="resource-card-meta">
@@ -46,10 +47,6 @@ function getResourceIcon(resource) {
     };
 
     return icons[resource] || icons.meeting;
-}
-
-function escapeHtml(value) {
-    return String(value).replace(/[&<>\"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', "'": '&#039;' }[character]));
 }
 
 loadResources().catch(() => {

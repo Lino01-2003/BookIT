@@ -1,3 +1,5 @@
+import { escapeHtml, getOfficeDate, requestJson } from './shared.js';
+
 const viewDate = document.querySelector('#view-date');
 const bookingsElement = document.querySelector('#bookings');
 const scheduleTitle = document.querySelector('#schedule-title');
@@ -5,15 +7,8 @@ const bookingCount = document.querySelector('#booking-count');
 
 viewDate.value = getOfficeDate();
 
-async function request(url, options) {
-    const response = await fetch(url, options);
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || 'Request failed.');
-    return data;
-}
-
 async function loadBookings() {
-    const bookings = await request(`/api/bookings?date=${encodeURIComponent(viewDate.value)}`);
+    const bookings = await requestJson(`/api/bookings?date=${encodeURIComponent(viewDate.value)}`);
     scheduleTitle.textContent = `Bookings for ${formatDate(viewDate.value)}`;
     bookingCount.textContent = bookings.length;
     bookingsElement.innerHTML = bookings.length ? bookings.map(renderBooking).join('') : '<p class="empty">Nothing booked for this day yet.</p>';
@@ -37,7 +32,7 @@ function renderBooking(booking) {
 async function cancelBooking(event) {
     if (!window.confirm('Cancel this booking?')) return;
     try {
-        await request(`/api/bookings/${event.currentTarget.dataset.cancel}/cancel`, { method: 'POST' });
+        await requestJson(`/api/bookings/${event.currentTarget.dataset.cancel}/cancel`, { method: 'POST' });
         await loadBookings();
     } catch (error) {
         window.alert(error.message);
@@ -50,16 +45,6 @@ viewDate.addEventListener('change', () => {
 
 function formatDate(value) {
     return new Intl.DateTimeFormat(undefined, { timeZone: 'Asia/Colombo', month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(`${value}T00:00:00+05:30`));
-}
-
-function getOfficeDate() {
-    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Colombo', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
-    const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
-    return `${values.year}-${values.month}-${values.day}`;
-}
-
-function escapeHtml(value) {
-    return String(value).replace(/[&<>\"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', "'": '&#039;' }[character]));
 }
 
 await loadBookings();

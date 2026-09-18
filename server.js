@@ -64,6 +64,13 @@ function createMutationQueue() {
     };
 }
 
+async function mutateBookings(storagePath, mutation) {
+    const bookings = await loadBookings(storagePath);
+    const result = await mutation(bookings);
+    await saveBookings(bookings, storagePath);
+    return result;
+}
+
 async function handleApi(request, response, pathname, storagePath, enqueueMutation) {
     if (request.method === 'GET' && pathname === '/api/resources') {
         return sendJson(response, 200, resources);
@@ -79,20 +86,17 @@ async function handleApi(request, response, pathname, storagePath, enqueueMutati
 
     if (request.method === 'POST' && pathname === '/api/bookings') {
         const input = await readJson(request);
-        const booking = await enqueueMutation(async () => {
-            const bookings = await loadBookings(storagePath);
+        const booking = await enqueueMutation(() => mutateBookings(storagePath, (bookings) => {
             const createdBooking = createBooking(input, bookings);
             bookings.push(createdBooking);
-            await saveBookings(bookings, storagePath);
             return createdBooking;
-        });
+        }));
         return sendJson(response, 201, booking);
     }
 
     const cancelMatch = pathname.match(/^\/api\/bookings\/([^/]+)\/cancel$/);
     if (request.method === 'POST' && cancelMatch) {
-        const booking = await enqueueMutation(async () => {
-            const bookings = await loadBookings(storagePath);
+        const booking = await enqueueMutation(() => mutateBookings(storagePath, (bookings) => {
             const foundBooking = bookings.find((item) => item.id === cancelMatch[1]);
 
             if (!foundBooking) {
@@ -108,9 +112,8 @@ async function handleApi(request, response, pathname, storagePath, enqueueMutati
             }
 
             foundBooking.status = 'cancelled';
-            await saveBookings(bookings, storagePath);
             return foundBooking;
-        });
+        }));
         return sendJson(response, 200, booking);
     }
 
