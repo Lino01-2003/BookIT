@@ -1,6 +1,8 @@
-import test from 'node:test';
+import test, { beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { createBooking } from '../src/booking.js';
+
+beforeEach((context) => context.mock.timers.enable({ apis: ['Date'], now: new Date('2026-09-16T06:00:00Z') }));
 
 const baseBooking = {
     resource: 'Meeting Room 1',
@@ -68,4 +70,26 @@ test('missing and invalid input are rejected', () => {
         () => createBooking({ ...baseBooking, startTime: 'invalid' }, []),
         /Enter valid start and end times/
     );
+});
+
+test('past dates are rejected while today and future dates are allowed', () => {
+    const now = new Date('2026-09-18T06:00:00Z');
+
+    assert.throws(
+        () => createBooking({ ...baseBooking, date: '2026-09-17' }, [], now),
+        /Booking date cannot be in the past/
+    );
+    assert.doesNotThrow(() => createBooking({ ...baseBooking, date: '2026-09-18' }, [], now));
+    assert.doesNotThrow(() => createBooking({ ...baseBooking, date: '2026-09-19' }, [], now));
+});
+
+test('past-date boundary follows Colombo midnight rather than UTC midnight', () => {
+    const booking = { ...baseBooking, date: '2026-09-18' };
+
+    assert.doesNotThrow(() => createBooking(booking, [], new Date('2026-09-18T18:29:59Z')));
+    assert.throws(
+        () => createBooking(booking, [], new Date('2026-09-18T18:30:00Z')),
+        /Booking date cannot be in the past/
+    );
+    assert.doesNotThrow(() => createBooking({ ...booking, date: '2026-09-19' }, [], new Date('2026-09-18T18:30:00Z')));
 });

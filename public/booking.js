@@ -2,7 +2,6 @@ const form = document.querySelector('#booking-form');
 const dateInput = document.querySelector('#date');
 const resourceSelect = document.querySelector('#resource');
 const message = document.querySelector('#form-message');
-const today = getOfficeDate();
 const selectedResource = new URLSearchParams(window.location.search).get('resource');
 
 async function request(url, options) {
@@ -24,6 +23,10 @@ form.addEventListener('submit', async (event) => {
     message.textContent = '';
 
     try {
+        updateDateInputConstraints();
+        if (dateInput.value < dateInput.min) {
+            throw new Error('Booking date cannot be in the past.');
+        }
         await request('/api/bookings', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -32,7 +35,8 @@ form.addEventListener('submit', async (event) => {
         message.className = 'message success';
         message.textContent = 'Booking created. View it on the dashboard.';
         form.reset();
-        dateInput.value = today;
+        updateDateInputConstraints();
+        dateInput.value = dateInput.min;
     } catch (error) {
         message.textContent = error.message;
     }
@@ -48,5 +52,12 @@ function getOfficeDate() {
     return `${values.year}-${values.month}-${values.day}`;
 }
 
-dateInput.value = today;
+function updateDateInputConstraints() {
+    dateInput.min = getOfficeDate();
+}
+
+dateInput.addEventListener('focus', updateDateInputConstraints);
+document.addEventListener('visibilitychange', updateDateInputConstraints);
+updateDateInputConstraints();
+dateInput.value = dateInput.min;
 await loadResources();

@@ -3,8 +3,7 @@ const bookingsElement = document.querySelector('#bookings');
 const scheduleTitle = document.querySelector('#schedule-title');
 const bookingCount = document.querySelector('#booking-count');
 
-const today = getOfficeDate();
-viewDate.value = today;
+viewDate.value = getOfficeDate();
 
 async function request(url, options) {
     const response = await fetch(url, options);

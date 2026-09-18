@@ -8,7 +8,7 @@ import { createRequestHandler, saveBookings } from '../server.js';
 
 const baseBooking = {
     resource: 'Meeting Room 1',
-    date: '2026-09-17',
+    date: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
     startTime: '09:00',
     endTime: '10:00',
     person: 'Ada Lovelace',
@@ -165,4 +165,19 @@ test('failed replacement preserves existing data and a later save succeeds', asy
     } finally {
         await rm(directory, { recursive: true, force: true });
     }
+});
+
+test('API rejects past dates without saving and accepts a later valid booking', async () => {
+    await withTestServer(async ({ request, readBookings }) => {
+        const date = new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10);
+        const rejected = await responseJson(await request('/api/bookings', createRequest({ date })));
+
+        assert.equal(rejected.status, 400);
+        assert.equal(rejected.body.error, 'Booking date cannot be in the past.');
+        assert.deepEqual(await readBookings(), []);
+
+        const accepted = await responseJson(await request('/api/bookings', createRequest()));
+        assert.equal(accepted.status, 201);
+        assert.equal((await readBookings()).length, 1);
+    });
 });

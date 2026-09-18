@@ -22,7 +22,7 @@ export class BookingConflictError extends Error {
     }
 }
 
-export function validateBookingInput(input) {
+export function validateBookingInput(input, now = new Date()) {
     const requiredFields = ['resource', 'date', 'startTime', 'endTime', 'person', 'purpose'];
 
     if (!input || typeof input !== 'object' || Array.isArray(input)) {
@@ -45,6 +45,10 @@ export function validateBookingInput(input) {
 
     if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date) || !isValidDate(input.date)) {
         throw new BookingValidationError('Enter a valid date.');
+    }
+
+    if (input.date < getOfficeDate(now)) {
+        throw new BookingValidationError('Booking date cannot be in the past.');
     }
 
     if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(input.startTime) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(input.endTime)) {
@@ -71,8 +75,8 @@ export function findConflict(candidate, bookings) {
     });
 }
 
-export function createBooking(input, bookings) {
-    validateBookingInput(input);
+export function createBooking(input, bookings, now = new Date()) {
+    validateBookingInput(input, now);
     const conflict = findConflict(input, bookings);
 
     if (conflict) {
@@ -88,13 +92,24 @@ export function createBooking(input, bookings) {
         person: input.person.trim(),
         purpose: input.purpose.trim(),
         status: 'confirmed',
-        createdAt: new Date().toISOString()
+        createdAt: now.toISOString()
     };
 }
 
 export function toMinutes(time) {
     const [hours, minutes] = time.split(':').map(Number);
     return hours * 60 + minutes;
+}
+
+function getOfficeDate(now) {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Colombo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).formatToParts(now);
+    const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+    return `${values.year}-${values.month}-${values.day}`;
 }
 
 function isValidDate(value) {
