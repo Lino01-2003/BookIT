@@ -26,7 +26,7 @@ Run `npm test` to execute the tests.
 
 - Overnight bookings and resource editing are not supported.
 - Storage does not support multiple server processes safely.
-- Past-date rejection is not yet verified in the submitted project; the original code accepts past dates.
+- Elapsed start times today are still allowed; bookings on past dates are rejected.
 - Accounts, notifications, and deployment are outside the project scope.
 
 ## Stretch feature
